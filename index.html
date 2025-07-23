@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gantt Chart</title>
+    <style>
+      body {
+        font-size: 12px;
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .container-fluid.h-100 {
+        padding: 0 !important;
+      }
+      .col-md-12.h-100 {
+        padding: 0 !important;
+      }
+
+      .table-container {
+        overflow-x: hidden;
+        overflow-y: visible;
+        position: relative;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+      }
+      table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      th:first-child,
+      td:first-child {
+        border-left: 1px solid rgb(161, 182, 196);
+      }
+      th:last-child,
+      td:last-child {
+        border-right: 1px solid rgb(161, 182, 196);
+      }
+
+      tr:last-child td:first-child {
+        border-bottom-left-radius: 8px;
+      }
+
+      th,
+      td {
+        border: 0.5px solid rgb(161, 182, 196);
+        padding: 12px;
+        text-align: center;
+        min-height: 40px;
+        font-weight: bold;
+        line-height: normal;
+      }
+      .quarter-cell {
+        border: 1px solid rgb(161, 182, 196);
+      }
+      .month-cell {
+        border: 0px dashed #ccc;
+        font-size: 0.8em;
+        position: relative;
+        min-height: 40px;
+        overflow: visible;
+        border-bottom: 1px solid rgb(161, 182, 196) !important;
+        padding: 5px;
+      }
+
+      .hide-months .month-cell {
+        border: 0;
+      }
+
+      .month-cell-divisor {
+        border-right: 1px solid rgb(161, 182, 196) !important;
+      }
+
+      .milestone-icon {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background-color: #0066cc;
+        z-index: 1;
+        cursor: pointer;
+      }
+      .sub-milestone-icon {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+        background-color: #66ccff;
+        z-index: 1;
+        cursor: pointer;
+        transform: translate(-50%, 0);
+      }
+      .critical-goal-icon {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background-color: #ff6600;
+        z-index: 6;
+        cursor: pointer;
+        transform: translate(-50%, 0%);
+      }
+      .task-name {
+        position: absolute;
+        font-size: 10px;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        overflow: visible;
+        z-index: 2;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 2px 4px;
+        border-radius: 3px;
+        transform: translate(-50%, 0);
+        line-height: 1.1;
+        text-align: center;
+      }
+      .group-header {
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .sub-group {
+        font-weight: bold;
+        text-align: center;
+        vertical-align: middle;
+      }
+      .sub-sub-group {
+        background-color: #ffffff;
+      }
+      /* Classes para os cabeçalhos */
+      .title-header {
+        background-color: black;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2em;
+        padding: 12px;
+      }
+      .fiscal-year-header {
+        background-color: rgb(110, 144, 168);
+        color: white;
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+      .quarter-header {
+        background-color: rgb(191, 230, 255);
+        color: black;
+        font-weight: bold;
+      }
+      .month-header {
+        background-color: rgb(228 242 251);
+        color: #666666;
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+      .initiative-header {
+        background-color: rgb(200, 252, 255);
+        color: #333333;
+        font-weight: bold;
+        height: auto;
+        vertical-align: middle;
+        position: sticky;
+      }
+
+      .highlighted-icon {
+        background-color: yellow !important;
+        box-shadow: 0 0 5px yellow;
+      }
+
+      .highlighted-icon::after {
+        background-color: yellow !important;
+      }
+
+      /* Estilos para o painel de configurações */
+      .size-control {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      .control-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 15px;
+      }
+      .control-title {
+        font-weight: bold;
+        color: #333;
+        font-size: 16px;
+      }
+      .toggle-controls {
+        background: none;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        color: #666;
+        padding: 5px;
+        transition: color 0.2s;
+      }
+      .toggle-controls:hover {
+        color: #333;
+      }
+      .control-content {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        padding-top: 15px;
+        transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+        max-height: 500px;
+        overflow: hidden;
+      }
+      .control-content.collapsed {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+      }
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+        background-color: white;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      .control-group-title {
+        font-weight: bold;
+        color: #333;
+        font-size: 14px;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid #eee;
+      }
+      .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px 0;
+      }
+      .slider-label {
+        min-width: 120px;
+        color: #666;
+        font-size: 13px;
+      }
+      .slider-value {
+        min-width: 40px;
+        text-align: right;
+        color: #0066cc;
+        font-weight: bold;
+      }
+      #cellSizeSlider,
+      #taskNameWidthSlider,
+      #widthSlider {
+        flex: 1;
+        height: 4px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #dee2e6;
+        border-radius: 2px;
+        outline: none;
+      }
+      #cellSizeSlider::-webkit-slider-thumb,
+      #taskNameWidthSlider::-webkit-slider-thumb,
+      #widthSlider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #0066cc;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      #cellSizeSlider::-webkit-slider-thumb:hover,
+      #taskNameWidthSlider::-webkit-slider-thumb:hover,
+      #widthSlider::-webkit-slider-thumb:hover {
+        background: #0052a3;
+      }
+      .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 0;
+      }
+      .checkbox-container input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #0066cc;
+      }
+      .checkbox-container label {
+        font-size: 12px;
+        color: #666;
+        cursor: pointer;
+        flex: 1;
+      }
+
+      /* Estilos para a legenda */
+      .legend-container {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        font-weight: bold;
+      }
+
+      .legend-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .legend-items {
+        display: flex;
+        gap: 30px;
+        flex-wrap: wrap;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #666;
+      }
+
+      .legend-icon {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        position: relative;
+      }
+
+      .legend-milestone {
+        width: 12px;
+        height: 12px;
+        background-color: #0066cc;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .legend-submilestone {
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-bottom: 12px solid #66ccff;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .legend-critical-goal {
+        width: 12px;
+        height: 12px;
+        background-color: #ff6600;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .legend-arrow {
+        width: 20px;
+        height: 2px;
+        background-color: rgb(178, 32, 0);
+        position: relative;
+      }
+
+      .legend-arrow::after {
+        content: "";
+        position: absolute;
+        right: -2px;
+        top: -3px;
+        width: 0;
+        height: 0;
+        border-left: 6px solid rgb(178, 32, 0);
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+      }
+
+      .legend-highlight {
+        background-color: yellow;
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
+
+      /* Estilos para o tooltip */
+      .task-tooltip {
+        visibility: hidden;
+        position: fixed;
+        background-color: rgba(255, 255, 255, 0.98);
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px;
+        width: 280px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 9999;
+        opacity: 0;
+        transition: opacity 0.2s, visibility 0.2s;
+        pointer-events: none;
+        font-size: 12px;
+        color: #333;
+        top: 0;
+        left: 0;
+        transform: translate(-50%, -100%);
+        margin-top: -10px;
+      }
+
+      .task-tooltip::after {
+        content: "";
+        position: absolute;
+        bottom: -6px;
+        left: 50%;
+        z-index: 90;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 6px solid rgba(255, 255, 255, 0.98);
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+      }
+
+      .milestone-icon,
+      .sub-milestone-icon {
+        position: absolute;
+        z-index: 6;
+        cursor: pointer;
+      }
+
+      .milestone-icon:hover .task-tooltip,
+      .sub-milestone-icon:hover .task-tooltip {
+        visibility: visible;
+        opacity: 1;
+        top: var(--mouse-y);
+        left: var(--mouse-x);
+      }
+
+      .tooltip-header {
+        font-weight: bold;
+        color: #0066cc;
+        margin-bottom: 8px;
+        font-size: 12px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 6px;
+      }
+
+      .tooltip-content {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px;
+        align-items: start;
+      }
+
+      .tooltip-label {
+        font-weight: 600;
+        color: #666;
+        padding-right: 8px;
+      }
+
+      .tooltip-value {
+        color: #333;
+      }
+
+      .tooltip-dependencies {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #eee;
+      }
+
+      .tooltip-dependency-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        font-size: 11px;
+      }
+
+      .tooltip-dependency-arrow {
+        color: rgb(178, 32, 0);
+        font-weight: bold;
+      }
+
+      /* Estilização da barra de rolagem */
+      .table-container::-webkit-scrollbar {
+        height: 8px;
+        margin-top: 10px;
+      }
+
+      .table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+        margin-top: 10px;
+      }
+
+      .table-container::-webkit-scrollbar-thumb {
+        background: #0066cc;
+        border-radius: 4px;
+        transition: background 0.3s ease;
+      }
+
+      .table-container::-webkit-scrollbar-thumb:hover {
+        background: #0052a3;
+      }
+
+      /* Para Firefox */
+      .table-container {
+        scrollbar-width: thin;
+        scrollbar-color: #070f26 #f1f1f1;
+      }
+
+      /* Estilos para as setas de dependência */
+      .dependency-arrow {
+        position: absolute;
+        pointer-events: none;
+        /*  z-index: 1;   */
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .dependency-line {
+        position: absolute;
+        border: 1px solid #ccc;
+      }
+
+      .dependency-line.horizontal {
+        /*transform: translateY(-0.5px);*/
+        background: repeating-linear-gradient(
+          to right,
+          #ccc 0,
+          #ccc 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-line.vertical {
+        /*transform: translateX(-0.5px);*/
+        background: repeating-linear-gradient(
+          to bottom,
+          #ccc 0,
+          #ccc 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-red .dependency-line.horizontal {
+        border-color: rgb(178, 32, 0);
+        background: repeating-linear-gradient(
+          to right,
+          rgb(178, 32, 0) 0,
+          rgb(178, 32, 0) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-red .dependency-line.vertical {
+        border-color: rgb(178, 32, 0);
+        background: repeating-linear-gradient(
+          to bottom,
+          rgb(178, 32, 0) 0,
+          rgb(178, 32, 0) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-yellow .dependency-line.horizontal {
+        border-color: rgb(255, 193, 7);
+        background: repeating-linear-gradient(
+          to right,
+          rgb(255, 193, 7) 0,
+          rgb(255, 193, 7) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-yellow .dependency-line.vertical {
+        border-color: rgb(255, 193, 7);
+        background: repeating-linear-gradient(
+          to bottom,
+          rgb(255, 193, 7) 0,
+          rgb(255, 193, 7) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-green .dependency-line.horizontal {
+        border-color: rgb(40, 167, 69);
+        background: repeating-linear-gradient(
+          to right,
+          rgb(40, 167, 69) 0,
+          rgb(40, 167, 69) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-green .dependency-line.vertical {
+        border-color: rgb(40, 167, 69);
+        background: repeating-linear-gradient(
+          to bottom,
+          rgb(40, 167, 69) 0,
+          rgb(40, 167, 69) 2px,
+          transparent 2px,
+          transparent 4px
+        );
+      }
+
+      .dependency-arrow-head {
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-left: 6px solid #ccc;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+        transform: translateY(-50%);
+      }
+
+      .dependency-red .dependency-arrow-head {
+        border-left-color: rgb(178, 32, 0);
+      }
+
+      .dependency-yellow .dependency-arrow-head {
+        border-left-color: rgb(255, 193, 7);
+      }
+
+      .dependency-green .dependency-arrow-head {
+        border-left-color: rgb(40, 167, 69);
+      }
+
+      /* Estilos para o efeito de destaque */
+      .milestone-icon.highlighted {
+        box-shadow: 0 0 15px rgba(0, 0, 0), 0 0 30px rgba(0, 0, 0);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        filter: brightness(1.1);
+      }
+
+      .sub-milestone-icon.highlighted {
+        box-shadow: 0 0 15px rgba(0, 0, 0), 0 0 30px rgba(0, 0, 0);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        filter: brightness(1.3) saturate(1.5);
+        background-color: #00aaff;
+      }
+
+      .critical-goal-icon.highlighted {
+        box-shadow: 0 0 15px rgba(0, 0, 0), 0 0 30px rgba(0, 0, 0);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        filter: brightness(1.3) saturate(1.5);
+        background-color: #ff8533;
+      }
+
+      /* Estilos para o destaque das setas de dependência */
+      .dependency-line.highlighted {
+        background: none;
+      }
+
+      /* Estilos para o filtro de milestones */
+      .milestone-icon.hidden,
+      .sub-milestone-icon.hidden,
+      .critical-goal-icon.hidden {
+        display: none !important;
+      }
+
+      .tooltip-fields-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+        padding: 5px 0;
+      }
+
+      .tooltip-fields-container .checkbox-container {
+        background-color: #f8f9fa;
+        padding: 8px 12px;
+        border-radius: 4px;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+      }
+
+      .tooltip-fields-container .checkbox-container:hover {
+        background-color: #e9ecef;
+        border-color: #dee2e6;
+      }
+
+      .tooltip-fields-container .checkbox-container input[type="checkbox"] {
+        margin-right: 8px;
+      }
+
+      .tooltip-fields-container .checkbox-container label {
+        font-size: 12px;
+        color: #495057;
+      }
+
+      .tooltip-fields-container
+        .checkbox-container
+        input[type="checkbox"]:checked
+        + label {
+        color: #0066cc;
+        font-weight: 500;
+      }
+
+      /* Estilos para o collapse lateral do chatbot */
+      .chat-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        z-index: 1000;
+        resize: both;
+        min-width: 300px;
+        min-height: 400px;
+        max-width: 800px;
+        max-height: 800px;
+        background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAxNSAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik02LjQxOTEgNS4xNjYzTDkuMDYwMzYgMC4yNTM2MjRDOS4xMjMxOSAwLjEzNjcyOSA5LjE3NDQ0IDAgOS4zMTQ5MyAwSDE0LjA5MzNDMTQuMjMzNyAwIDE0LjM0NzggMC4xMTM2NTkgMTQuMzQ3OCAwLjI1MzYyNEw5LjA2MTM1IDEwLjA3NjZMNi40MTkxIDUuMTY2M1oiIGZpbGw9IiMwNzBGMjYiLz4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zLjc3OTI2IDEwLjA3NjZIMy43NzQ4OEwzLjc3NDQ2IDEwLjA3NzdMMCAzLjA2Mjc2QzAgMi45MjI5NCAwLjExNDA4MiAyLjgwOTI4IDAuMjU0NDI2IDIuODA5MjhINS4wMzI5QzUuMTczMzggMi44MDkyOCA1LjIyNDQ5IDIuOTQ2MDEgNS4yODc0NiAzLjA2Mjc2TDkuMDYyNDkgMTAuMDc4N0wzLjc3OTI2IDEwLjA3NjZaIiBmaWxsPSIjMDcwRjI2Ii8+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNOS4wNjEzNSAxMC4wNzY2TDMuNzc5MjYgMTAuMDc2Nkw2LjQxOTEgNS4xNjYzTDkuMDYxMzUgMTAuMDc2NloiIGZpbGw9IiMwNzBGMjYiLz4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik02LjQxODExIDE0Ljk5MTFMOC45NzY3NyAxOS43NDY0QzkuMDQzOTggMTkuODcxMSA5LjA5MDcxIDIwIDkuMjMxMzQgMjBIMTQuMDA5N0MxNC4xNTAzIDIwIDE0LjI2NDIgMTkuODg2NSAxNC4yNjQyIDE5Ljc0NjRMOS4wNjE3NyAxMC4wNzc3TDYuNDE4MTEgMTQuOTkxMVoiIGZpbGw9IiMwNzBGMjYiLz4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zLjc3NDQ2IDEwLjA3NzdMOS4wNjA5MyAxMC4wNzk0TDUuMzcxMDQgMTYuOTM3MUM1LjMwMzg0IDE3LjA2MTkgNS4yNTY5NiAxNy4xOTA5IDUuMTE2NjIgMTcuMTkwOUgwLjMzODE0N0MwLjE5NzUyIDE3LjE5MDkgMC4wODM0MzgxIDE3LjA3NzIgMC4wODM0MzgxIDE2LjkzNzFMMy43NzQ0NiAxMC4wNzc3WiIgZmlsbD0iIzA3MEYyNiIvPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTkuMDYxNzggMTAuMDc3Nkw2LjQxODExIDE0Ljk5MTFMMy43NzQ0NiAxMC4wNzc2TDMuNzc0ODggMTAuMDc2Nkw4Ljk2NDIyIDEwLjA3NjZMOS4wNjE3OCAxMC4wNzc2WiIgZmlsbD0iIzA3MEYyNiIvPgo8L3N2Zz4K");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 100px;
+        background-color: rgba(255, 255, 255, 0.95);
+      }
+
+      .chat-container.collapsed {
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
+        min-height: 50px !important;
+        max-width: 50px !important;
+        max-height: 50px !important;
+        border-radius: 50%;
+        background-color: #070f26;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .chat-container.collapsed .chat-header {
+        padding: 0;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+      }
+
+      .chat-container.collapsed .chat-header h3 {
+        display: none;
+      }
+
+      .chat-container.collapsed::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 20px;
+        height: 20px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z'/%3E%3C/svg%3E");
+        background-size: contain;
+        background-repeat: no-repeat;
+      }
+
+      .chat-header {
+        background: #070f26;
+        color: white;
+        padding: 15px;
+        cursor: pointer;
+        position: relative;
+        z-index: 1002;
+      }
+
+      .chat-header h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background-color: rgba(255, 255, 255, 0.8);
+      }
+
+      .message {
+        max-width: 80%;
+        padding: 10px 15px;
+        border-radius: 15px;
+        margin: 5px 0;
+        word-wrap: break-word;
+      }
+
+      .user-message {
+        background: #091433;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 5px;
+      }
+
+      .bot-message {
+        background: #f1f1f1;
+        color: #333;
+        align-self: flex-start;
+        border-bottom-left-radius: 5px;
+      }
+
+      .chat-input {
+        padding: 15px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+      }
+
+      .chat-input input {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        outline: none;
+      }
+
+      .chat-input button {
+        padding: 10px 20px;
+        background: #070f26;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .chat-input button:hover {
+        background: #1b2f69;
+      }
+
+      /* Animação para novas mensagens */
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .message {
+        animation: slideIn 0.3s ease;
+      }
+
+      /* Ajuste do conteúdo principal quando o chat estiver expandido */
+      body.chat-expanded #exportable-content {
+        margin-right: 40%;
+        transition: margin-right 0.3s ease-in-out;
+      }
+
+      /* Estilos para o conteúdo das mensagens do bot */
+      .bot-message-content {
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .bot-message-content h4 {
+        margin: 0 0 8px 0;
+        color: #0066cc;
+        font-size: 14px;
+      }
+
+      .bot-message-content p {
+        margin: 0 0 8px 0;
+      }
+
+      .bot-message-content ul {
+        margin: 0;
+        padding-left: 20px;
+      }
+
+      .bot-message-content li {
+        margin: 4px 0;
+      }
+
+      .bot-message-content strong {
+        color: #0066cc;
+      }
+
+      /* Ajuste do tamanho da mensagem do bot para comportar o HTML */
+      .bot-message {
+        max-width: 90%;
+        padding: 12px 15px;
+      }
+
+      /* Estilos para o redimensionamento do chat */
+      .chat-resize-handle {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 20px;
+        height: 20px;
+        cursor: nwse-resize;
+        background: linear-gradient(135deg, #007bff 50%, transparent 50%);
+        border-top-left-radius: 10px;
+        opacity: 0.5;
+        transition: opacity 0.2s;
+        z-index: 1001;
+      }
+
+      .chat-resize-handle:hover {
+        opacity: 1;
+      }
+
+      .chat-container.collapsed .chat-messages,
+      .chat-container.collapsed .chat-input,
+      .chat-container.collapsed .chat-resize-handle {
+        display: none;
+      }
+
+      /* Estilos para a árvore de iniciativas */
+      .initiative-tree {
+        max-height: 150px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 10px;
+        background-color: #f8f9fa;
+      }
+
+      .initiative-tree-item {
+        margin: 5px 0;
+        font-size: 12px;
+      }
+
+      .initiative-tree-item.level-1 {
+        margin-left: 0;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .initiative-tree-item.level-2 {
+        margin-left: 20px;
+        font-weight: 500;
+        color: #555;
+      }
+
+      .initiative-tree-item.level-3 {
+        margin-left: 40px;
+        font-weight: normal;
+        color: #666;
+      }
+
+      .initiative-tree-checkbox {
+        margin-right: 8px;
+        cursor: pointer;
+        accent-color: #0066cc;
+      }
+
+      .initiative-tree-label {
+        cursor: pointer;
+        display: inline-block;
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+      }
+
+      .initiative-tree-label:hover {
+        background-color: rgba(0, 102, 204, 0.1);
+      }
+
+      .initiative-tree-item.level-1 .initiative-tree-label {
+        font-weight: bold;
+        color: #333;
+      }
+
+      .initiative-tree-item.level-2 .initiative-tree-label {
+        font-weight: 500;
+        color: #555;
+      }
+
+      .initiative-tree-item.level-3 .initiative-tree-label {
+        font-weight: normal;
+        color: #666;
+      }
+
+      .initiative-tree-item.hidden {
+        display: none;
+      }
+
+      .initiative-tree-item.partial {
+        opacity: 0.6;
+      }
+
+      .initiative-tree-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+
+      .initiative-tree-button {
+        padding: 4px 8px;
+        font-size: 11px;
+        background-color: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .initiative-tree-button:hover {
+        background-color: #0052a3;
+      }
+
+      .initiative-tree-button.secondary {
+        background-color: #6c757d;
+      }
+
+      .initiative-tree-button.secondary:hover {
+        background-color: #5a6268;
+      }
+
+      .initiative-tree-count {
+        font-size: 10px;
+        color: #666;
+        margin-left: 5px;
+        background-color: #e9ecef;
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+
+      /* Estilos para a data de atualização */
+      .update-date {
+        font-size: 12px;
+        color: #666;
+        font-weight: normal;
+        text-align: right;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #dee2e6;
+      }
+
+      .update-date strong {
+        color: #333;
+        font-weight: bold;
+      }
+
+      .update-date #updateDate {
+        color: #0066cc;
+        font-weight: bold;
+      }
+
+      /* Estilos para o freeze das primeiras colunas */
+      .table-container {
+        overflow-x: hidden;
+        overflow-y: visible;
+        position: relative;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+      }
+
+      /* Container para o freeze das colunas */
+      .table-wrapper {
+        position: relative;
+        display: flex;
+        width: fit-content;
+      }
+
+      /* Container das colunas fixas */
+      .fixed-columns {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        background: white;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Container das colunas com scroll */
+      .scrollable-columns {
+        overflow-y: visible;
+        position: relative;
+      }
+
+      /* Wrapper para scroll horizontal que não afeta o posicionamento das setas */
+      .scrollable-wrapper {
+        overflow-x: hidden;
+        overflow-y: visible;
+        max-width: calc(100vw - 400px);
+        position: relative;
+      }
+
+      /* Barra de scroll horizontal flutuante */
+      .floating-scrollbar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        max-width: 1200px;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+        transition: opacity 0.3s ease;
+        opacity: 0.8;
+      }
+
+      .floating-scrollbar:hover {
+        opacity: 1;
+      }
+
+      .floating-scrollbar-track {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: #f1f1f1;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .floating-scrollbar-thumb {
+        position: absolute;
+        height: 8px;
+        background: #0066cc;
+        border-radius: 4px;
+        cursor: grab;
+        transition: background 0.3s ease;
+        top: 2px;
+        min-width: 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      .floating-scrollbar-thumb:hover {
+        background: #0052a3;
+        transform: scaleY(1.2);
+      }
+
+      .floating-scrollbar-thumb:active {
+        cursor: grabbing;
+        background: #004080;
+      }
+
+      /* Controles de navegação da barra de scroll */
+      .scroll-controls {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+        z-index: 1001;
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+      }
+
+      .scroll-controls:hover {
+        opacity: 1;
+      }
+
+      .scroll-btn {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ddd;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(5px);
+        transition: all 0.3s ease;
+        font-size: 18px;
+        color: #0066cc;
+        font-weight: bold;
+      }
+
+      .scroll-btn:hover {
+        background: #0066cc;
+        color: white;
+        transform: scale(1.1);
+        box-shadow: 0 4px 15px rgba(0, 102, 204, 0.3);
+      }
+
+      .scroll-btn:active {
+        transform: scale(0.95);
+      }
+
+      /* Ajuste para quando o chat estiver expandido */
+      body.chat-expanded .floating-scrollbar {
+        width: 60%;
+        left: 25%;
+        transform: none;
+      }
+
+      body.chat-expanded .scroll-controls {
+        left: 25%;
+        transform: none;
+      }
+
+      /* Ajuste para telas menores */
+      @media (max-width: 768px) {
+        .floating-scrollbar {
+          width: 90%;
+          bottom: 10px;
+          height: 10px;
+        }
+
+        .scroll-controls {
+          bottom: 30px;
+        }
+
+        .scroll-btn {
+          width: 35px;
+          height: 35px;
+          font-size: 16px;
+        }
+
+        .floating-scrollbar-thumb {
+          height: 6px;
+          top: 2px;
+        }
+      }
+
+      /* Animação de entrada para a barra de scroll */
+      @keyframes slideUp {
+        from {
+          transform: translateX(-50%) translateY(20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(-50%) translateY(0);
+          opacity: 0.8;
+        }
+      }
+
+      .floating-scrollbar {
+        animation: slideUp 0.5s ease-out;
+      }
+
+      /* Indicador de scroll ativo */
+      .floating-scrollbar.scrolling {
+        opacity: 1;
+        box-shadow: 0 4px 20px rgba(0, 102, 204, 0.2);
+      }
+
+      .floating-scrollbar.scrolling .floating-scrollbar-thumb {
+        background: #0052a3;
+      }
+
+      /* Tabela das colunas fixas */
+      .fixed-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px 0 0 8px;
+        overflow: hidden;
+      }
+
+      /* Tabela das colunas com scroll */
+      .scrollable-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 0 8px 8px 0;
+        overflow: hidden;
+        margin-left: -1px; /* Para sobrepor a borda da tabela fixa */
+      }
+
+      /* Ajustes para as bordas das tabelas */
+      .fixed-table th:last-child,
+      .fixed-table td:last-child {
+        border-right: 2px solid rgb(161, 182, 196);
+      }
+
+      .scrollable-table th:first-child,
+      .scrollable-table td:first-child {
+        border-left: none;
+      }
+
+      /* Ajuste para o rowspan nas colunas fixas */
+      .fixed-table .group-header,
+      .fixed-table .sub-group,
+      .fixed-table .sub-sub-group {
+        background-color: white;
+        position: relative;
+      }
+
+      /* Sincronizar altura das linhas entre as tabelas */
+      .fixed-table tbody tr,
+      .scrollable-table tbody tr {
+        height: auto;
+      }
+
+      /* Garantir que as células de conteúdo tenham altura mínima consistente */
+      .scrollable-table .month-cell {
+        min-height: 40px;
+        transition: padding 0.3s ease;
+      }
+
+      /* Ajuste para as células fixas acompanharem a altura das células de conteúdo */
+      .fixed-table td {
+        transition: padding 0.3s ease;
+      }
+
+      /* Sombra para indicar o freeze */
+      .fixed-columns::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: -5px;
+        width: 5px;
+        height: 100%;
+        background: linear-gradient(to right, rgba(0, 0, 0, 0.1), transparent);
+        pointer-events: none;
+        z-index: 11;
+      }
+
+      /* Remover estilos antigos do scroll */
+      .scrollable-columns::-webkit-scrollbar {
+        display: none;
+      }
+
+      .scrollable-columns {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      /* Ajuste para as setas de dependência no contexto do freeze */
+      .dependency-arrow {
+        position: absolute;
+        pointer-events: none;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Garantir que as setas apareçam corretamente sobre as colunas fixas */
+      .scrollable-columns .dependency-arrow {
+        z-index: 5;
+        position: absolute;
+        pointer-events: none;
+      }
+
+      /* Garantir que as setas sejam posicionadas relativamente ao container correto */
+      .scrollable-wrapper .dependency-arrow {
+        position: absolute;
+        pointer-events: none;
+        z-index: 5;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Ajuste para tooltips no contexto do freeze */
+      .task-tooltip {
+        z-index: 9999;
+      }
+
+      /* Responsividade para telas menores */
+      @media (max-width: 768px) {
+        .fixed-table th,
+        .fixed-table td {
+          min-width: 80px;
+          max-width: 150px;
+          font-size: 10px;
+        }
+      }
+
+      /* Estilos para colunas de iniciativa invisíveis na tabela scrollável */
+      .hidden-initiative {
+        display: none;
+      }
+
+      /* Garantir que as células de conteúdo tenham altura mínima consistente */
+      .scrollable-table .month-cell {
+        min-height: 40px;
+        transition: padding 0.3s ease;
+      }
+
+      /* Sincronizar altura do initiative-header com as 3 linhas do cabeçalho scrollável */
+      .fixed-table .initiative-header {
+        height: 100%;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-container">
+      <div class="chat-header">
+        <h3>Axet assistant</h3>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <!-- As mensagens serão inseridas aqui -->
+      </div>
+      <div class="chat-input">
+        <input type="text" id="userInput" placeholder="Ask a question..." />
+
+        <button id="sendButton">&#10148;</button>
+      </div>
+      <div class="chat-resize-handle"></div>
+    </div>
+
+    <div class="size-control">
+      <div class="control-header">
+        <span class="control-title">Chart Settings</span>
+        <button class="toggle-controls">▶</button>
+      </div>
+      <div class="control-content">
+        <div class="control-group">
+          <div class="control-group-title">Initiative</div>
+          <div class="initiative-tree-controls">
+            <button class="initiative-tree-button" id="selectAllInitiatives">
+              Select All
+            </button>
+            <button
+              class="initiative-tree-button secondary"
+              id="deselectAllInitiatives"
+            >
+              Deselect All
+            </button>
+            <button
+              class="initiative-tree-button secondary"
+              id="expandAllInitiatives"
+            >
+              Expand All
+            </button>
+            <button
+              class="initiative-tree-button secondary"
+              id="collapseAllInitiatives"
+            >
+              Hide All
+            </button>
+          </div>
+          <div class="initiative-tree" id="initiativeTree">
+            <!-- A árvore será gerada dinamicamente pelo JavaScript -->
+          </div>
+        </div>
+        <div class="control-group" style="display: none">
+          <div class="control-group-title">Display</div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="showMonthsCheckbox" checked />
+            <label for="showMonthsCheckbox">Show Months</label>
+          </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="showFirstMonthsCheckbox" checked />
+            <label for="showFirstMonthsCheckbox">Show First Months</label>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="control-group-title">Level of Detail</div>
+          <div class="checkbox-container" style="display: none">
+            <input type="checkbox" id="fullTaskNameCheckbox" />
+            <label for="fullTaskNameCheckbox">Full Task Name</label>
+          </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="showMilestonesCheckbox" checked />
+            <label for="showMilestonesCheckbox">Milestones</label>
+          </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="showSubMilestonesCheckbox" checked />
+            <label for="showSubMilestonesCheckbox">SubMilestones</label>
+          </div>
+          <div class="checkbox-container">
+            <input type="checkbox" id="showCriticalGoalsCheckbox" checked />
+            <label for="showCriticalGoalsCheckbox">Critical Goals</label>
+          </div>
+          <div class="checkbox-container" style="display: none">
+            <input type="checkbox" id="rotateGroupHeaderCheckbox" checked />
+            <label for="rotateGroupHeaderCheckbox">Rotate Group Header</label>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="control-group-title">Chart size</div>
+          <div class="slider-container">
+            <span class="slider-label">Width:</span>
+            <input
+              type="range"
+              id="cellSizeSlider"
+              min="0"
+              max="100"
+              value="35"
+            />
+            <span class="slider-value" id="sizeValue">35</span>
+          </div>
+          <div class="slider-container">
+            <span class="slider-label">Height:</span>
+            <input type="range" id="widthSlider" min="0" max="100" value="35" />
+            <span class="slider-value" id="widthValue">35</span>
+          </div>
+          <div class="slider-container">
+            <span class="slider-label">Label Width:</span>
+            <input
+              type="range"
+              id="taskNameWidthSlider"
+              min="0"
+              max="400"
+              value="110"
+            />
+            <span class="slider-value" id="taskNameWidthValue">110</span>
+          </div>
+        </div>
+        <div class="control-group" style="display: none">
+          <div class="control-group-title">Tooltip Fields</div>
+          <div class="tooltip-fields-container">
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipTaskType" />
+              <label for="tooltipTaskType">Type</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipResource" />
+              <label for="tooltipResource">Resource</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipCategory" />
+              <label for="tooltipCategory">Category</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipSubcategory" />
+              <label for="tooltipSubcategory">Subcategory</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipDate" checked />
+              <label for="tooltipDate">Date</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipFiscalYear" />
+              <label for="tooltipFiscalYear">Fiscal Year</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipQuarter" />
+              <label for="tooltipQuarter">Quarter</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipCompletion" />
+              <label for="tooltipCompletion">Completion</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipAssignee" />
+              <label for="tooltipAssignee">Assigned to</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipStatus" />
+              <label for="tooltipStatus">Status</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipProject" />
+              <label for="tooltipProject">Project</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipCosts" />
+              <label for="tooltipCosts">Costs</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipNotes" checked />
+              <label for="tooltipNotes">Notes</label>
+            </div>
+            <div class="tooltip-field">
+              <input type="checkbox" id="tooltipDependencies" />
+              <label for="tooltipDependencies">Dependencies</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="exportable-content">
+      <div class="legend-container">
+        <div class="legend-title">Legend</div>
+        <div class="legend-items">
+          <div class="legend-item">
+            <div class="legend-icon">
+              <div class="legend-milestone"></div>
+            </div>
+            <span>Key milestone with major organizational impact</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon">
+              <div class="legend-submilestone"></div>
+            </div>
+            <span>Sub-milestone to achieve key milestone</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-arrow"></div>
+            <span>Critical interdependency</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-icon">
+              <div class="legend-critical-goal"></div>
+            </div>
+            <span>Critical goals with high interdependency</span>
+          </div>
+        </div>
+        <div class="update-date">
+          <strong>Updated date:</strong> <span id="updateDate">15/01/2024</span>
+        </div>
+      </div>
+      <div class="table-container">
+        <div class="table-wrapper">
+          <!-- Tabela das colunas fixas (3 primeiras colunas) -->
+          <div class="fixed-columns">
+            <table id="fixedTable" class="fixed-table">
+              <!-- O conteúdo das colunas fixas será gerado pelo JavaScript -->
+            </table>
+          </div>
+
+          <!-- Tabela das colunas com scroll -->
+          <div class="scrollable-wrapper">
+            <div class="scrollable-columns">
+              <table id="scrollableTable" class="scrollable-table">
+                <!-- O conteúdo das colunas com scroll será gerado pelo JavaScript -->
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Barra de scroll horizontal flutuante -->
+    <div class="floating-scrollbar" id="floatingScrollbar">
+      <div class="floating-scrollbar-track" id="scrollTrack">
+        <div class="floating-scrollbar-thumb" id="scrollThumb"></div>
+      </div>
+    </div>
+
+    <!-- Controles de navegação -->
+    <div class="scroll-controls" id="scrollControls">
+      <button class="scroll-btn" id="scrollLeft" title="Scroll Left">‹</button>
+      <button class="scroll-btn" id="scrollRight" title="Scroll Right">
+        ›
+      </button>
+    </div>
+
+    <button
+      id="exportPdf"
+      style="
+        margin: 20px;
+        padding: 10px 20px;
+        background-color: #0066cc;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      "
+    >
+      Export to PDF
+    </button>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="initiative-tree.js"></script>
+    <script src="script.js"></script>
+    <script src="chat.js"></script>
+  </body>
+</html>
+
+<!-- Index Flow
+
+<button id="exportPdf" style="margin: 20px; padding: 10px 20px; background-color: #0066cc; color: white; border: none; border-radius: 4px; cursor: pointer;">Export to PDF</button>
+
+
+</body>
+</html>-->
