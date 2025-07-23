@@ -165,6 +165,8 @@
         height: auto;
         vertical-align: middle;
         position: sticky;
+        top: 0;
+        z-index: 20;
       }
 
       .highlighted-icon {
@@ -1291,6 +1293,13 @@
         overflow: hidden;
       }
 
+      .fixed-table th {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background: white;
+      }
+
       /* Tabela das colunas com scroll */
       .scrollable-table {
         border-collapse: separate;
@@ -1298,6 +1307,13 @@
         border-radius: 0 8px 8px 0;
         overflow: hidden;
         margin-left: -1px; /* Para sobrepor a borda da tabela fixa */
+      }
+
+      .scrollable-table th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: white;
       }
 
       /* Ajustes para as bordas das tabelas */
